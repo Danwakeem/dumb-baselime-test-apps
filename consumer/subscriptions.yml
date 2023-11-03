@@ -1,0 +1,35 @@
+service: consumer-subscriptions
+configValidationMode: error
+
+provider:
+  name: aws
+  versionFunctions: false
+  environment:
+    STAGE: ${sls:stage}
+
+resources:
+  Resources:
+    SubscriptionPolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        PolicyDocument:
+          Version: '2012-10-17'
+          Id: MyQueueSendPolicy
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action:   
+                - 'sqs:SendMessage'
+                - 'sqs:ReceiveMessage'
+              Resource: ${cf:consumer-${sls:stage}.QueueARN}
+              Condition:
+                ArnEquals:
+                  aws:SourceArn: ${cf:producer-${sls:stage}.SNSProducerEventTopicARN}
+        Queues:
+          - ${cf:consumer-${sls:stage}.QueueEndpoint}
+    SNSSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Protocol: sqs
+        Endpoint: ${cf:consumer-${sls:stage}.QueueARN}
+        TopicArn: ${cf:producer-${sls:stage}.SNSProducerEventTopicARN}

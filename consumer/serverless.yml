@@ -1,0 +1,72 @@
+service: consumer
+frameworkVersion: '3'
+
+params:
+  default:
+    POWERTOOLS_SERVICE_NAME: consumer-${sls:stage}
+    SQS_NAME: consumer-${sls:stage}
+    SQS_DLQ_NAME: consumer-dlq-${sls:stage}
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  logRetentionInDays: 1
+  versionFunctions: false
+  tags:
+    "baselime:tracing": "true"
+  environment:
+    POWERTOOLS_SERVICE_NAME: ${param:POWERTOOLS_SERVICE_NAME}
+
+plugins:
+  - serverless-esbuild
+
+custom:
+  esbuild:
+    packager: yarn
+    bundle: true
+    minify: false
+    sourcemap: external
+
+package:
+  individually: true
+
+resources:
+  Resources:
+    DLQueue:
+      Type: AWS::SQS::Queue
+      Properties: 
+        QueueName: ${param:SQS_DLQ_NAME}
+
+    SQSQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${param:SQS_NAME}
+        VisibilityTimeout: 30
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt:
+              - "DLQueue"
+              - "Arn"
+          maxReceiveCount: 5
+
+  Outputs:
+    QueueARN:
+      Description: Arn of Notification Queue
+      Value:
+        Fn::GetAtt: [SQSQueue, Arn]
+    QueueEndpoint:
+      Description: Endpoint of the Notification Queue
+      Value: !Ref SQSQueue
+
+functions:
+  consumer:
+    handler: src/consumer.handler
+    timeout: 30
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - SQSQueue
+              - Arn
+          batchSize: 10
+          functionResponseType: ReportBatchItemFailures

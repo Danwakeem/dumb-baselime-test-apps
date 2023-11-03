@@ -1,0 +1,26 @@
+{
+  "name": "consumer",
+  "version": "2.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "deploy": "sls deploy",
+    "deploy:subscriptions": "sls deploy -c subscriptions.yml",
+    "invoke:consumer": "sls invoke -f consumer -p __inputs/mock.sqs.json",
+    "test:integration": "echo \"ok\""
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119",
+    "@types/node": "^20.5.0",
+    "aws-lambda": "^1.0.7",
+    "esbuild": "^0.19.2",
+    "serverless": "^3.34.0",
+    "serverless-esbuild": "^1.46.0",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "@aws-lambda-powertools/logger": "^1.12.1",
+    "@middy/core": "^4.6.0",
+    "@opentelemetry/api": "^1.6.0"
+  }
+}

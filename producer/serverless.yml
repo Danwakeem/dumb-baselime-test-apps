@@ -1,0 +1,62 @@
+service: producer
+frameworkVersion: '3'
+
+params:
+  default:
+    POWERTOOLS_SERVICE_NAME: producer-${sls:stage}
+    SNS_TOPIC_NAME: producer-topic-${sls:stage}
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  logRetentionInDays: 1
+  versionFunctions: false
+  tags:
+    "baselime:tracing": "true"
+  environment:
+    POWERTOOLS_SERVICE_NAME: ${param:POWERTOOLS_SERVICE_NAME}
+    TOPIC_ARN: !Ref SNSTopic
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource: '*'
+        - Effect: Allow
+          Action:
+            - sns:*
+          Resource: '*'
+
+plugins:
+  - serverless-esbuild
+
+custom:
+  esbuild:
+    packager: yarn
+    bundle: true
+    minify: false
+    sourcemap: external
+
+package:
+  individually: true
+
+resources:
+  Resources:
+    SNSTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: Event Producer Topic
+        TopicName: ${param:SNS_TOPIC_NAME}
+  Outputs:
+    SNSProducerEventTopicARN:
+      Description: Arn of SNS Topic
+      Value: !Ref SNSTopic
+
+functions:
+  api:
+    handler: src/producer.handler
+    events:
+      - httpApi:
+          path: /
+          method: get
